@@ -89,8 +89,71 @@ if all(c in sample_df.columns for c in required_for_aggregate):
     if agg_df is not None and not agg_df.empty:
         st.caption(f"Pour chaque capture, le secteur (grille lat/lon) où il y a le plus de véhicules avec moins de {threshold_km} km d'autonomie. Données agrégées sur {len(files)} fichier(s).")
         st.dataframe(agg_df, use_container_width=True, hide_index=True)
+
+    # ---------- Optimisation pour rechargeurs : meilleur créneau + meilleur secteur ----------
+    @st.cache_data(ttl=300)
+    def _compute_recharger_optimization(_files, _threshold_m):
+        """Retourne (by_hour, by_sector, by_sector_hour) pour optimiser créneau et secteur."""
+        hour_rows = []
+        sector_rows = []
+        combo_rows = []
+        for path in _files:
+            try:
+                d = pd.read_parquet(path)
+                if d.empty or not all(c in d.columns for c in required_for_aggregate):
+                    continue
+                d = d.dropna(subset=["lat", "lon", "current_range_meters", "captured_at"])
+                low = d[d["current_range_meters"] < _threshold_m].copy()
+                if low.empty:
+                    continue
+                ts = pd.to_datetime(low["captured_at"].iloc[0])
+                hour = ts.hour
+                low["sector_lat"] = low["lat"].round(2)
+                low["sector_lon"] = low["lon"].round(2)
+                hour_rows.append({"hour": hour, "count": len(low)})
+                for (slat, slon), cnt in low.groupby(["sector_lat", "sector_lon"]).size().items():
+                    sector_rows.append({"sector_lat": slat, "sector_lon": slon, "count": cnt})
+                    combo_rows.append({"hour": hour, "sector_lat": slat, "sector_lon": slon, "count": cnt})
+            except Exception:
+                continue
+        if not hour_rows:
+            return None, None, None
+        by_hour = pd.DataFrame(hour_rows).groupby("hour", as_index=False)["count"].mean().round(1)
+        by_hour.columns = ["Heure", "Moy. trottinettes à recharger"]
+        by_sector = pd.DataFrame(sector_rows).groupby(["sector_lat", "sector_lon"], as_index=False)["count"].mean().round(1)
+        by_sector = by_sector.sort_values("count", ascending=False).head(20)
+        by_sector["Secteur"] = by_sector.apply(lambda r: f"({r['sector_lat']:.2f}, {r['sector_lon']:.2f})", axis=1)
+        by_sector = by_sector[["Secteur", "count"]].rename(columns={"count": "Moy. trottinettes à recharger"})
+        by_combo = pd.DataFrame(combo_rows).groupby(["hour", "sector_lat", "sector_lon"], as_index=False)["count"].mean().round(1)
+        by_combo = by_combo.sort_values("count", ascending=False).head(25)
+        by_combo["Secteur"] = by_combo.apply(lambda r: f"({r['sector_lat']:.2f}, {r['sector_lon']:.2f})", axis=1)
+        by_combo = by_combo[["Heure", "Secteur", "count"]].rename(columns={"count": "Moy. à recharger"})
+        return by_hour, by_sector, by_combo
+
+    opt_hour, opt_sector, opt_combo = _compute_recharger_optimization(files, threshold_m)
+    if opt_hour is not None:
+        st.subheader("Optimisation pour rechargeurs : où et quand intervenir ?")
+        st.caption("Objectif : choisir le **créneau horaire** et le **secteur** où il y a en moyenne le plus de trottinettes à recharger (sous le seuil défini ci-dessus), pour maximiser ton travail.")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("**Meilleurs créneaux horaires** (moyenne de trottinettes à recharger par capture)")
+            if not opt_hour.empty:
+                st.bar_chart(opt_hour.set_index("Heure"))
+            else:
+                st.info("Pas de données.")
+        with c2:
+            st.markdown("**Meilleurs secteurs** (top 20, moyenne par capture)")
+            if opt_sector is not None and not opt_sector.empty:
+                st.dataframe(opt_sector, use_container_width=True, hide_index=True)
+            else:
+                st.info("Pas de données.")
+        st.markdown("**Meilleures combinaisons secteur + heure** (top 25 — où et quand tu as le plus de véhicules à recharger)")
+        if opt_combo is not None and not opt_combo.empty:
+            st.dataframe(opt_combo, use_container_width=True, hide_index=True)
+        else:
+            st.info("Pas de données.")
     else:
-        st.info("Pas assez de données avec lat/lon et autonomie pour calculer les secteurs.")
+        st.info("Pas assez de données pour l’optimisation créneau/secteur.")
 
 # Fichier à afficher
 options = [f.name for f in files]
