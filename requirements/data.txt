@@ -1,0 +1,4 @@
+# Dépendances pour la couche stockage (DataFrame + Parquet)
+# Utilisé par : storage.py
+pandas>=2.2.0
+pyarrow>=14.0.0

@@ -6,6 +6,10 @@ data/
 visualizations/
 *.png
 *.txt
+# Exceptions : dépendances du projet (doivent être versionnées)
+!requirements.txt
+!requirements/
+!requirements/*.txt
 
 # Python
 __pycache__/
