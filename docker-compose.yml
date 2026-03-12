@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  voi-tracker:
+    build: .
+    container_name: voi-tracker
+    restart: unless-stopped
+    volumes:
+      - voi_data:/app/data
+    # Pour le développement local, décommente la ligne suivante :
+    # - ./data:/app/data
+
+volumes:
+  voi_data:
+    driver: local
