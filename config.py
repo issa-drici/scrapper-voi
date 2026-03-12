@@ -1,27 +1,18 @@
 """
-Configuration centralisée du collecteur Voi.
-Constantes, chemins et configuration du logging — sans dépendances tierces lourdes.
+Configuration globale du repo (chemins de données, logging).
+Chaque scraper a sa propre config dans scrapers/<id>/config.py.
 """
 
 import logging
 from pathlib import Path
 
-# API Voi - Le Havre (GBFS)
-TARGET_URL = (
-    "https://api.voiapp.io/gbfs/fr/6bb6b5dc-1cda-4da7-9216-d3023a0bc54a/v2/336/free_bike_status.json"
-)
-REQUEST_TIMEOUT = 30
-
-# Polling
-POLLING_INTERVAL_SECONDS = 600  # 10 minutes
-
-# Stockage
+# Répertoire racine des données (chaque scraper a un sous-dossier)
 DATA_DIR_DOCKER = Path("/app/data")
 DATA_DIR_LOCAL = Path("./data")
 
 
-def get_data_directory() -> Path:
-    """Retourne le répertoire de données (Docker si /app/data existe, sinon local)."""
+def get_base_data_dir() -> Path:
+    """Répertoire racine des données (Docker si /app/data existe, sinon local)."""
     if DATA_DIR_DOCKER.exists():
         return DATA_DIR_DOCKER
     path = DATA_DIR_LOCAL
@@ -30,7 +21,7 @@ def get_data_directory() -> Path:
 
 
 def setup_logging(level: int = logging.INFO) -> logging.Logger:
-    """Configure le logging et retourne le logger du module principal."""
+    """Configure le logging et retourne un logger."""
     logging.basicConfig(
         level=level,
         format="%(asctime)s - %(levelname)s - %(message)s",

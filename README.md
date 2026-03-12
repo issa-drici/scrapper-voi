@@ -1,6 +1,9 @@
-# 🛴 Voi Battery Tracker - Le Havre (V1)
+# 🛴 Scrapers — Collecteurs de données
 
-Collecteur de données (worker) conçu pour historiser l'état de la flotte de trottinettes Voi au Havre. L'objectif est de transformer des données temps réel volatiles en un historique structuré pour de la data analyse.
+Repo multi-scrapers : chaque scraper collecte des données (API, etc.) et les enregistre en Parquet. Un **dashboard Streamlit** unique permet de choisir un scraper et de visualiser ses données (tableaux, graphiques, carte).
+
+**Scrapers inclus :**
+- **Voi Le Havre** — flotte trottinettes Voi au Havre (API GBFS, batteries / autonomie).
 
 ## 🔗 Configuration des API
 
@@ -22,27 +25,19 @@ Pour le Havre, l'architecture GBFS de Voi se décompose ainsi :
 - **Format de stockage** : Apache Parquet (optimisé pour le stockage colonnaire et la compression).
 - **Déploiement** : Docker / VPS (via Coolify).
 
-### Structure du code et dépendances
+### Structure du repo
 
-Le code est découpé en modules avec des dépendances clairement séparées :
+- **scrapers/** : un dossier par scraper (ex. `voi_havre/` : config, api, storage, run). Registre dans `scrapers/__init__.py`.
+- **config.py** : chemins globaux, logging. **main.py** : `python main.py [scraper_id]`. **dashboard.py** : Streamlit, choix du scraper dans la sidebar.
 
-| Fichier      | Rôle              | Dépendances tierces   |
-|-------------|-------------------|------------------------|
-| `config.py` | Constantes, chemins, logging | (stdlib) |
-| `api.py`    | Récupération API Voi (GBFS)  | `requests`             |
-| `storage.py`| DataFrame + export Parquet   | `pandas`, `pyarrow`    |
-| `main.py`   | Boucle d’orchestration       | (importe config, api, storage) |
+- **Installation** : `pip install -r requirements.txt` (voir aussi `requirements/core.txt`, `data.txt`, `dashboard.txt`).
+- Chaque scraper a son dossier sous `scrapers/` et ses données sous `data/<scraper_id>/`.
 
-- **Installation complète** (collecteur) : `pip install -r requirements.txt`
-- **API seule** (ex. tests, autre client) : `pip install -r requirements/core.txt`
-- **Couche données seule** : `pip install -r requirements/data.txt`
-- **Dashboard** : inclus si tu installes tout (`requirements.txt`) — voir ci-dessous.
+### Dashboard Streamlit (même conteneur en prod)
 
-### Dashboard Streamlit (même conteneur)
+En Docker/Coolify, le conteneur lance un **worker** (par défaut `voi_havre`) et le **dashboard** sur le port **8501**. Depuis le dashboard tu peux changer de scraper dans la sidebar pour voir les données de chaque source (tant que les Parquet sont dans `data/<scraper_id>/`).
 
-En déploiement (Docker/Coolify), le conteneur lance le **worker** (collecte toutes les 10 min) et le **dashboard** Streamlit. Le dashboard est accessible sur le **port 8501**. Configure ce port dans Coolify et associe ton nom de domaine pour visualiser les données (tableaux, graphiques par autonomie, type de véhicule).
-
-En local : `streamlit run dashboard.py` (après `pip install -r requirements.txt`).
+**Migrer les données existantes** : si tu avais des fichiers dans `/app/data/*.parquet`, déplace-les dans `/app/data/voi_havre/` pour qu'ils apparaissent sous « Voi Le Havre ».
 
 ## 🏗 Logique du Collecteur (The Pipeline)
 

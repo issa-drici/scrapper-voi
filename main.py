@@ -1,57 +1,34 @@
 #!/usr/bin/env python3
 """
-Voi Battery Tracker - Le Havre (V1)
-Point d'entrée : boucle de collecte des données (orchestration).
+Point d'entrée : lance un scraper par id.
+Usage: python main.py [scraper_id]
+Exemple: python main.py voi_havre
 """
 
-import time
+import argparse
+import sys
 
-from config import (
-    POLLING_INTERVAL_SECONDS,
-    REQUEST_TIMEOUT,
-    TARGET_URL,
-    get_data_directory,
-    setup_logging,
-)
-from api import fetch_voi_data
-from storage import process_and_save
+from scrapers import get_scraper, list_scrapers
 
 
-def main() -> None:
-    """Boucle principale de collecte des données."""
-    logger = setup_logging()
-    logger.info("Démarrage du collecteur Voi Battery Tracker - Le Havre")
-    logger.info("URL cible: %s", TARGET_URL)
-    logger.info(
-        "Intervalle de polling: %d secondes (%d minutes)",
-        POLLING_INTERVAL_SECONDS,
-        POLLING_INTERVAL_SECONDS // 60,
+def main() -> int:
+    scrapers_list = list_scrapers()
+    ids = [s[0] for s in scrapers_list]
+    parser = argparse.ArgumentParser(description="Lancer un scraper")
+    parser.add_argument(
+        "scraper_id",
+        nargs="?",
+        default=ids[0] if ids else None,
+        help=f"Id du scraper (défaut: {ids[0] if ids else 'aucun'}). Disponibles: {ids}",
     )
-
-    data_dir = get_data_directory()
-    logger.info("Répertoire de données: %s", data_dir)
-
-    while True:
-        try:
-            logger.info("Récupération des données...")
-            data = fetch_voi_data(TARGET_URL, timeout=REQUEST_TIMEOUT)
-            process_and_save(data, data_dir)
-            logger.info(
-                "Prochaine collecte dans %d minutes...",
-                POLLING_INTERVAL_SECONDS // 60,
-            )
-        except KeyboardInterrupt:
-            logger.info("Arrêt demandé par l'utilisateur")
-            break
-        except Exception as e:
-            logger.exception("Erreur dans la boucle principale: %s", e)
-            logger.info(
-                "Nouvelle tentative dans %d minutes...",
-                POLLING_INTERVAL_SECONDS // 60,
-            )
-
-        time.sleep(POLLING_INTERVAL_SECONDS)
+    args = parser.parse_args()
+    if args.scraper_id not in ids:
+        print(f"Scraper inconnu: {args.scraper_id}. Disponibles: {ids}", file=sys.stderr)
+        return 1
+    scraper = get_scraper(args.scraper_id)
+    scraper.run()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

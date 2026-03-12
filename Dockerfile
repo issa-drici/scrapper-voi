@@ -7,9 +7,9 @@ COPY requirements.txt .
 COPY requirements/ requirements/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copie du code source (worker + dashboard)
-COPY config.py api.py storage.py main.py dashboard.py .
-COPY entrypoint.sh .
+# Copie du code source (scrapers + dashboard)
+COPY config.py main.py dashboard.py entrypoint.sh .
+COPY scrapers/ scrapers/
 RUN chmod +x entrypoint.sh
 
 # Création du répertoire de données (sera monté comme volume)
