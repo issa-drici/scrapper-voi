@@ -5,9 +5,13 @@ Lit les fichiers Parquet depuis le même répertoire que le worker.
 
 import streamlit as st
 import pandas as pd
+import pydeck as pdk
 from pathlib import Path
 
 from config import get_data_directory
+
+# Centre de la carte : Le Havre
+LE_HAVRE_VIEW = {"latitude": 49.4944, "longitude": 0.1079, "zoom": 12, "pitch": 0, "bearing": 0}
 
 st.set_page_config(page_title="Voi Le Havre — Données", layout="wide")
 
@@ -35,6 +39,45 @@ if "current_range_meters" in df.columns:
 if "vehicle_type_id" in df.columns:
     col3.metric("Types", df["vehicle_type_id"].nunique())
 col4.metric("Dernière capture", filepath.stem.replace("voi_havre_", "").replace("_", " "))
+
+# Carte du Havre — heatmap des batteries déchargées
+if "lat" in df.columns and "lon" in df.columns:
+    st.subheader("Carte du Havre — Heatmap batteries déchargées")
+    st.caption("Plus la zone est rouge, plus les véhicules y ont une autonomie faible (batteries déchargées).")
+    map_df = df[["lat", "lon"]].copy()
+    map_df = map_df.dropna(subset=["lat", "lon"])
+    if "current_range_meters" in df.columns:
+        map_df = df[["lat", "lon", "current_range_meters"]].dropna(
+            subset=["lat", "lon", "current_range_meters"]
+        )
+        # Poids : plus l'autonomie est faible, plus le point "chauffe" (0–10 km → poids élevé)
+        map_df = map_df.assign(
+            weight=(100 - (map_df["current_range_meters"] / 100).clip(0, 100)).astype(float)
+        )
+    else:
+        map_df["weight"] = 1.0
+    if not map_df.empty:
+        layer = pdk.Layer(
+            "HeatmapLayer",
+            data=map_df,
+            get_position=["lon", "lat"],
+            get_weight="weight",
+            radius_pixels=60,
+            intensity=1.2,
+            threshold=0.3,
+        )
+        st.pydeck_chart(
+            pdk.Deck(
+                layers=[layer],
+                initial_view_state=pdk.ViewState(**LE_HAVRE_VIEW),
+                map_style="carto-positron",
+                tooltip={"text": "Concentration de véhicules à faible autonomie"},
+            )
+        )
+    else:
+        st.info("Aucune position valide (lat/lon) dans ce fichier.")
+else:
+    st.warning("Colonnes lat/lon absentes : carte non disponible.")
 
 # Aperçu des données
 st.subheader("Aperçu des données")
