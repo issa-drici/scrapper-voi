@@ -127,7 +127,7 @@ if all(c in sample_df.columns for c in required_for_aggregate):
         by_combo = pd.DataFrame(combo_rows).groupby(["hour", "sector_lat", "sector_lon"], as_index=False)["count"].mean().round(1)
         by_combo = by_combo.sort_values("count", ascending=False).head(25)
         by_combo["Secteur"] = by_combo.apply(lambda r: f"({r['sector_lat']:.2f}, {r['sector_lon']:.2f})", axis=1)
-        by_combo = by_combo[["Heure", "Secteur", "count"]].rename(columns={"count": "Moy. à recharger"})
+        by_combo = by_combo[["hour", "Secteur", "count"]].rename(columns={"hour": "Heure", "count": "Moy. à recharger"})
         return by_hour, by_sector, by_combo
 
     opt_hour, opt_sector, opt_combo = _compute_recharger_optimization(files, threshold_m)
