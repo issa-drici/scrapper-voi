@@ -101,12 +101,15 @@ def _compute_recharger_optimization(_files, _threshold_m):
                 continue
             ts = pd.to_datetime(low["captured_at"].iloc[0])
             hour = ts.hour
+            minute_bin = (ts.minute // 30) * 30
+            slot_30 = f"{hour:02d}h{minute_bin:02d}"
+            day = ts.date()
             low["sector_lat"] = low["lat"].round(2)
             low["sector_lon"] = low["lon"].round(2)
             hour_rows.append({"hour": hour, "count": len(low)})
             for (slat, slon), cnt in low.groupby(["sector_lat", "sector_lon"]).size().items():
                 sector_rows.append({"sector_lat": slat, "sector_lon": slon, "count": cnt})
-                combo_rows.append({"hour": hour, "sector_lat": slat, "sector_lon": slon, "count": cnt})
+                combo_rows.append({"date": day, "slot_30": slot_30, "sector_lat": slat, "sector_lon": slon, "count": cnt})
         except Exception:
             continue
     if not hour_rows:
@@ -117,10 +120,10 @@ def _compute_recharger_optimization(_files, _threshold_m):
     by_sector = by_sector.sort_values("count", ascending=False).head(20)
     by_sector["Secteur"] = by_sector.apply(lambda r: f"({r['sector_lat']:.2f}, {r['sector_lon']:.2f})", axis=1)
     by_sector = by_sector[["Secteur", "count"]].rename(columns={"count": "Moy. trottinettes à recharger"})
-    by_combo = pd.DataFrame(combo_rows).groupby(["hour", "sector_lat", "sector_lon"], as_index=False)["count"].mean().round(1)
+    by_combo = pd.DataFrame(combo_rows).groupby(["date", "slot_30", "sector_lat", "sector_lon"], as_index=False)["count"].mean().round(1)
     by_combo = by_combo.sort_values("count", ascending=False).head(25)
     by_combo["Secteur"] = by_combo.apply(lambda r: f"({r['sector_lat']:.2f}, {r['sector_lon']:.2f})", axis=1)
-    by_combo = by_combo[["hour", "Secteur", "count"]].rename(columns={"hour": "Heure", "count": "Moy. à recharger"})
+    by_combo = by_combo[["date", "slot_30", "Secteur", "count"]].rename(columns={"date": "Jour", "slot_30": "Créneau (30 min)", "count": "Moy. à recharger"})
     return by_hour, by_sector, by_combo
 
 opt_hour, opt_sector, opt_combo = _compute_recharger_optimization(files, threshold_m)
@@ -140,7 +143,7 @@ if opt_hour is not None:
             st.dataframe(opt_sector, use_container_width=True, hide_index=True)
         else:
             st.info("Pas de données.")
-    st.markdown("**Meilleures combinaisons secteur + heure** (top 25)")
+    st.markdown("**Meilleures combinaisons secteur + jour + créneau 30 min** (top 25)")
     if opt_combo is not None and not opt_combo.empty:
         st.dataframe(opt_combo, use_container_width=True, hide_index=True)
     else:
