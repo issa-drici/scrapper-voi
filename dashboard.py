@@ -15,7 +15,7 @@ if not scrapers_list:
     st.error("Aucun scraper enregistré.")
     st.stop()
 
-# Sidebar : scraper + seuil
+# Sidebar : scraper
 scraper_options = {name: sid for sid, name in scrapers_list}
 selected_name = st.sidebar.selectbox(
     "Scraper / source",
@@ -25,6 +25,10 @@ selected_name = st.sidebar.selectbox(
 scraper_id = scraper_options[selected_name]
 scraper = get_scraper(scraper_id)
 data_dir = scraper.get_data_dir()
+
+# Voi : ~15 km = batterie faible à recharger, ~40 km = bonne batterie
+THRESHOLD_KM = 15
+threshold_m = THRESHOLD_KM * 1000
 
 files = sorted(data_dir.glob("*.parquet"), key=lambda p: p.stat().st_mtime, reverse=True)
 
@@ -40,15 +44,6 @@ sample_df = pd.read_parquet(files[0])
 if not all(c in sample_df.columns for c in required_for_aggregate):
     st.error("Les données de ce scraper n’ont pas les colonnes nécessaires (lat, lon, current_range_meters, captured_at).")
     st.stop()
-
-threshold_km = st.sidebar.slider(
-    "Seuil « faible autonomie » (km)",
-    min_value=1,
-    max_value=20,
-    value=5,
-    help="Trottinette à recharger = moins de ce nombre de km restants.",
-)
-threshold_m = threshold_km * 1000
 
 # ---------- Tableau : secteur le plus chargé par capture ----------
 @st.cache_data(ttl=300)
@@ -84,7 +79,7 @@ def _compute_top_sector_per_capture(_files, _threshold_m):
 st.subheader("Secteur le plus chargé par capture (tous les fichiers)")
 agg_df = _compute_top_sector_per_capture(files, threshold_m)
 if agg_df is not None and not agg_df.empty:
-    st.caption(f"Secteur (grille lat/lon) avec le plus de véhicules à recharger (< {threshold_km} km) pour chaque capture.")
+    st.caption(f"Secteur (grille lat/lon) avec le plus de véhicules à recharger (< {THRESHOLD_KM} km d'autonomie, batterie faible Voi) pour chaque capture.")
     st.dataframe(agg_df, use_container_width=True, hide_index=True)
 else:
     st.info("Pas assez de données.")
