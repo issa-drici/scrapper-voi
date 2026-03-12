@@ -80,7 +80,7 @@ st.subheader("Secteur le plus chargé par capture (tous les fichiers)")
 agg_df = _compute_top_sector_per_capture(files, threshold_m)
 if agg_df is not None and not agg_df.empty:
     st.caption(f"Secteur (grille lat/lon) avec le plus de véhicules à recharger (< {THRESHOLD_KM} km d'autonomie, batterie faible Voi) pour chaque capture.")
-    st.dataframe(agg_df, use_container_width=True, hide_index=True)
+    st.dataframe(agg_df, width="stretch", hide_index=True)
 else:
     st.info("Pas assez de données.")
 
@@ -140,12 +140,12 @@ if opt_hour is not None:
     with c2:
         st.markdown("**Meilleurs secteurs** (top 20)")
         if opt_sector is not None and not opt_sector.empty:
-            st.dataframe(opt_sector, use_container_width=True, hide_index=True)
+            st.dataframe(opt_sector, width="stretch", hide_index=True)
         else:
             st.info("Pas de données.")
     st.markdown("**Meilleures combinaisons secteur + jour + créneau 30 min** (top 25)")
     if opt_combo is not None and not opt_combo.empty:
-        st.dataframe(opt_combo, use_container_width=True, hide_index=True)
+        st.dataframe(opt_combo, width="stretch", hide_index=True)
     else:
         st.info("Pas de données.")
 else:
