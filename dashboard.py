@@ -39,6 +39,59 @@ if not files:
     st.warning("Aucun fichier Parquet pour ce scraper. Le collecteur enregistre des captures périodiquement.")
     st.stop()
 
+# ---------- Vue agrégée : secteur le plus chargé en batteries faibles (par jour + heure) ----------
+# Affichée uniquement si les données ont lat, lon, current_range_meters, captured_at
+required_for_aggregate = ["lat", "lon", "current_range_meters", "captured_at"]
+sample_df = pd.read_parquet(files[0])
+if all(c in sample_df.columns for c in required_for_aggregate):
+    st.subheader("Secteur avec le plus de trottinettes à faible autonomie (tous les fichiers)")
+    threshold_km = st.sidebar.slider(
+        "Seuil « faible autonomie » (km)",
+        min_value=1,
+        max_value=20,
+        value=5,
+        help="Une trottinette est comptée à faible autonomie si elle a moins que ce nombre de km restants.",
+    )
+    threshold_m = threshold_km * 1000
+
+    @st.cache_data(ttl=300)
+    def _compute_top_sector_per_capture(_files, _threshold_m):
+        rows = []
+        for path in _files:
+            try:
+                d = pd.read_parquet(path)
+                if d.empty or not all(c in d.columns for c in required_for_aggregate):
+                    continue
+                d = d.dropna(subset=["lat", "lon", "current_range_meters", "captured_at"])
+                low = d[d["current_range_meters"] < _threshold_m].copy()
+                if low.empty:
+                    continue
+                low["sector_lat"] = low["lat"].round(2)
+                low["sector_lon"] = low["lon"].round(2)
+                by_sector = low.groupby(["sector_lat", "sector_lon"], as_index=False).size()
+                by_sector.columns = ["sector_lat", "sector_lon", "count"]
+                top = by_sector.loc[by_sector["count"].idxmax()]
+                ts = pd.to_datetime(low["captured_at"].iloc[0])
+                rows.append({
+                    "Date": ts.date(),
+                    "Heure": ts.hour,
+                    "Secteur": f"({top['sector_lat']:.2f}, {top['sector_lon']:.2f})",
+                    "Nb trottinettes (faible autonomie)": int(top["count"]),
+                })
+            except Exception:
+                continue
+        if not rows:
+            return None
+        out = pd.DataFrame(rows)
+        return out.sort_values(["Date", "Heure"], ascending=[False, False])
+
+    agg_df = _compute_top_sector_per_capture(files, threshold_m)
+    if agg_df is not None and not agg_df.empty:
+        st.caption(f"Pour chaque capture, le secteur (grille lat/lon) où il y a le plus de véhicules avec moins de {threshold_km} km d'autonomie. Données agrégées sur {len(files)} fichier(s).")
+        st.dataframe(agg_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("Pas assez de données avec lat/lon et autonomie pour calculer les secteurs.")
+
 # Fichier à afficher
 options = [f.name for f in files]
 selected_file = st.sidebar.selectbox("Fichier à afficher", options, index=0)
