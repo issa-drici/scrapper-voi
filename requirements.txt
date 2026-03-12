@@ -1,6 +1,7 @@
-# Installation complète du collecteur (API + stockage)
-# Pour installer uniquement une couche :
-#   API seule : pip install -r requirements/core.txt
-#   Stockage : pip install -r requirements/data.txt
+# Installation complète (collecteur + dashboard Streamlit)
+# API seule : pip install -r requirements/core.txt
+# Stockage : pip install -r requirements/data.txt
+# Dashboard : pip install -r requirements/dashboard.txt
 -r requirements/core.txt
 -r requirements/data.txt
+-r requirements/dashboard.txt

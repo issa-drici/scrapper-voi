@@ -26,15 +26,19 @@ Coolify peut déployer directement un conteneur Docker. Voici comment faire :
 4. **Variables d'environnement (optionnel)**
    - Tu peux ajouter des variables si besoin, mais pour l'instant tout est dans le code
 
-5. **Déploiement**
+5. **Port du dashboard**
+   - Le conteneur expose le **port 8501** (Streamlit)
+   - Dans Coolify, configure l’application pour utiliser ce port (ex. « Port » ou « Application port » = 8501)
+   - Associe ton nom de domaine à cette application : tu pourras ouvrir le dashboard à `https://ton-domaine.com`
+
+6. **Déploiement**
    - Lance le déploiement
-   - Le conteneur va démarrer et le script tournera en continu
+   - Le conteneur démarre : le **worker** collecte les données en arrière-plan, le **dashboard** Streamlit est accessible sur le port 8501
 
 ### Vérification
 
-Une fois déployé, tu peux vérifier les logs dans Coolify pour voir si ça fonctionne :
-- Tu devrais voir : `🚀 Démarrage du collecteur Voi Battery Tracker - Le Havre`
-- Toutes les 10 minutes : `✅ Données sauvegardées: voi_havre_YYYYMMDD_HHMM.parquet`
+- **Logs** : tu devrais voir le démarrage du collecteur et, toutes les 10 minutes, la sauvegarde des Parquet.
+- **Dashboard** : ouvre l’URL de ton application (nom de domaine) pour visualiser les données (tableaux, graphiques par autonomie, type de véhicule, etc.).
 
 ## Option 2 : Déploiement Docker manuel (VPS)
 
@@ -51,10 +55,11 @@ docker build -t voi-tracker .
 # 3. Créer un volume pour les données
 docker volume create voi_data
 
-# 4. Lancer le conteneur
+# 4. Lancer le conteneur (port 8501 = dashboard Streamlit)
 docker run -d \
   --name voi-tracker \
   --restart unless-stopped \
+  -p 8501:8501 \
   -v voi_data:/app/data \
   voi-tracker
 

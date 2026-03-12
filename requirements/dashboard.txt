@@ -1,0 +1,2 @@
+# Dashboard Streamlit (visualisation des Parquet)
+streamlit>=1.28.0

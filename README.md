@@ -36,6 +36,13 @@ Le code est découpé en modules avec des dépendances clairement séparées :
 - **Installation complète** (collecteur) : `pip install -r requirements.txt`
 - **API seule** (ex. tests, autre client) : `pip install -r requirements/core.txt`
 - **Couche données seule** : `pip install -r requirements/data.txt`
+- **Dashboard** : inclus si tu installes tout (`requirements.txt`) — voir ci-dessous.
+
+### Dashboard Streamlit (même conteneur)
+
+En déploiement (Docker/Coolify), le conteneur lance le **worker** (collecte toutes les 10 min) et le **dashboard** Streamlit. Le dashboard est accessible sur le **port 8501**. Configure ce port dans Coolify et associe ton nom de domaine pour visualiser les données (tableaux, graphiques par autonomie, type de véhicule).
+
+En local : `streamlit run dashboard.py` (après `pip install -r requirements.txt`).
 
 ## 🏗 Logique du Collecteur (The Pipeline)
 
