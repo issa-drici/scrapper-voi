@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copie du code source (scrapers + dashboard)
 COPY config.py main.py dashboard.py entrypoint.sh .
+COPY helpers/ helpers/
 COPY scrapers/ scrapers/
 RUN chmod +x entrypoint.sh
 

@@ -17,7 +17,8 @@ scrapers/
     run.py             # Boucle : fetch → process_and_save → sleep(intervalle)
 config.py              # Racine : get_base_data_dir(), setup_logging()
 main.py                # CLI : python main.py [scraper_id]
-dashboard.py           # Streamlit (port 8501), lit data/<scraper_id>/*.parquet
+dashboard.py           # Streamlit (port 8501)
+helpers/               # time_helpers.py : dates UTC / Paris (obligatoire pour captured_at)
 entrypoint.sh          # Lance tous les scrapers du registre en arrière-plan, puis streamlit
 ```
 
@@ -93,17 +94,21 @@ def fetch(url: str, timeout: int = 30) -> dict:
 
 ### 2.5 Fichier `scrapers/<id>/storage.py`
 
-Une fonction qui prend les données (ex. `dict`) et le `Path` du répertoire de données, et écrit un ou plusieurs fichiers Parquet. Doit ajouter un horodatage de capture (ex. `captured_at` UTC) si pertinent.
+Une fonction qui prend les données (ex. `dict`) et le `Path` du répertoire de données, et écrit un ou plusieurs fichiers Parquet.
 
-Exemple de signature :
+**Dates / heures :** utiliser **`helpers.time_helpers.now_utc()`** pour `captured_at` et pour le suffixe du nom de fichier. Ne pas utiliser `datetime.now()` sans fuseau : `captured_at` en **UTC** ; stats en **Europe/Paris** via `helpers.time_helpers`.
 
 ```python
+from helpers.time_helpers import now_utc
+
 def process_and_save(data: dict, data_dir: Path) -> None:
+    ts = now_utc()
+    df["captured_at"] = ts
+    filename = f"{prefix}_{ts.strftime('%Y%m%d_%H%M')}.parquet"
     ...
-    df.to_parquet(filepath, engine="pyarrow", compression="snappy", index=False)
 ```
 
-Nom des fichiers : recommandation `{FILENAME_PREFIX}_{YYYYMMDD}_{HHMM}.parquet` pour une seule capture par fichier.
+Pour toute stat ou affichage horaire : `helpers.time_helpers` (`series_captured_at_to_paris`, `paris_hour`, `paris_date_and_slot_30`, `to_paris`).
 
 ### 2.6 Fichier `scrapers/<id>/run.py`
 
